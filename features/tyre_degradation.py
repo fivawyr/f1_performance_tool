@@ -4,8 +4,41 @@ from typing import Optional, Dict, List, Tuple
 from pathlib import Path
 import numpy as np
 from scipy import stats
+from scipy.optimize import curve_fit
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.linear_model import Ridge
+from sklearn.pipeline import Pipeline
 
+"""
+For getting the results of my analysis and the interpretion for R² values, check ANALYSIS_NOTES.md
+@author fivawyr
+"""
+""" 
+TIRE DEGRADATION MODELING - MULTI-PHASE APPROACH
 
+Phase 1 (Current): Empirical Curve Fitting
+  - Three models: Linear, Quadratic, Exponential
+  - Purpose: Pattern recognition in raw data
+  - Question: "How do tires degrade empirically?"
+  - Expected R²: 0.2-0.6 for Qualifying, 0.6-0.9 for Race
+
+Phase 2 (Next): Data Preprocessing
+  - Lap filtering, fuel correction, temperature correction
+  - Goal: Reduce noise to improve fits
+  - Expected R²: +0.2 improvement
+
+Phase 3 (Future): Physics-Based Hybrid Model
+  - Derive tire grip loss from Pacejka formula
+  - Link lap time to grip degradation
+  - Expected R²: 0.7-0.9 consistently
+
+Phase 4 (Advanced): Full Pacejka Integration
+  - C++ implementation with real tire coefficients
+  - Multi-variate input (age, temp, load, slip)
+  - Expected R²: 0.85+
+
+Ref: https://en.wikipedia.org/wiki/Hans_Pacejka
+"""
 @dataclass
 class vehicle_parameters:
     mass_kg: float = 768.0
@@ -48,6 +81,9 @@ class TireDegradationResult:
     degradation_rate_ms_per_lap: float
     r_squared: float
     estimated_tyre_life_laps: int
+    model_type: str = "linear"  # "linear", "quadratic", "exponential"
+    r_squared_quadratic: Optional[float] = None
+    r_squared_exponential: Optional[float] = None
 
     def to_dict(self) -> dict:
         return {
@@ -58,6 +94,9 @@ class TireDegradationResult:
             "baseline_time_ms": self.baseline_time_ms,
             "degradation_rate_ms_per_lap": self.degradation_rate_ms_per_lap,
             "r_squared": self.r_squared,
+            "model_type": self.model_type,
+            "r_squared_quadratic": self.r_squared_quadratic,
+            "r_squared_exponential": self.r_squared_exponential,
             "estimated_tyre_life_laps": self.estimated_tyre_life_laps,
         }
 
@@ -67,14 +106,65 @@ class TireDegradationAnalyzer:
         self.vehicle_params = vehicle_params or vehicle_parameters()
         self.results: List[TireDegradationResult] = []
 
-    def analyze_stint(
-        self,
-        laps: List,
-        driver: str,
-        compound: str,
-        stint: int,
-    ) -> Optional[TireDegradationResult]:
-        if not laps or len(laps) < 2:
+    @staticmethod
+    def _exponential_model(x: np.ndarray, a: float, b: float) -> np.ndarray:
+        """Exponential decay model: y = a * (1 - exp(-b*x))"""
+        return a * (1 - np.exp(-b * x))
+
+    def _fit_linear(
+        self, lap_nums: np.ndarray, times_ms: np.ndarray
+    ) -> Tuple[float, float, float]:
+        """Fit linear model: y = intercept + slope*x"""
+        result = stats.linregress(lap_nums, times_ms)
+        r_squared = result.rvalue**2
+        return result.intercept, result.slope, r_squared
+
+    def _fit_quadratic(
+        self, lap_nums: np.ndarray, times_ms: np.ndarray
+    ) -> Tuple[float, float, float]:
+        """Fit quadratic model: y = a + b*x + c*x^2"""
+        try:
+            pipe = Pipeline([
+                ("poly_features", PolynomialFeatures(degree=2)),
+                ("ridge_regression", Ridge(alpha=1.0))
+            ])
+            pipe.fit(lap_nums.reshape(-1, 1), times_ms)
+            y_pred = pipe.predict(lap_nums.reshape(-1, 1))
+            ss_res = np.sum((times_ms - y_pred) ** 2)
+            ss_tot = np.sum((times_ms - np.mean(times_ms)) ** 2)
+            r_squared = 1 - (ss_res / ss_tot)
+            
+            # Extract coefficients
+            coef = pipe.named_steps["ridge_regression"].coef_
+            intercept = pipe.named_steps["ridge_regression"].intercept_
+            return intercept, coef[0], r_squared
+        except:
+            return 0, 0, 0
+
+    def _fit_exponential(
+        self, lap_nums: np.ndarray, times_ms: np.ndarray
+    ) -> Tuple[float, float, float]:
+        """Fit exponential model: y = a * (1 - exp(-b*x))"""
+        try:
+            # Initial guess
+            popt, _ = curve_fit(
+                self._exponential_model,
+                lap_nums,
+                times_ms - np.min(times_ms),
+                p0=[np.max(times_ms) - np.min(times_ms), 0.1],
+                maxfev=10000
+            )
+            y_pred = self._exponential_model(lap_nums, *popt)
+            ss_res = np.sum((times_ms - np.min(times_ms) - y_pred) ** 2)
+            ss_tot = np.sum((times_ms - np.min(times_ms) - np.mean(times_ms - np.min(times_ms))) ** 2)
+            r_squared = 1 - (ss_res / ss_tot) if ss_tot > 0 else 0
+            return np.min(times_ms), popt[1], r_squared
+        except:
+            return 0, 0, 0
+
+    def analyze_stint(self,laps: List,driver: str, compound: str, stint: int, ) -> Optional[TireDegradationResult]:
+        # Minimum stint length: 3 laps for meaningful analysis, with 2 laps, quadratic polynomial always overfits with R²=1.0!!
+        if not laps or len(laps) < 3:
             return None
 
         times_ms = np.array(
@@ -82,14 +172,20 @@ class TireDegradationAnalyzer:
         )
         lap_nums = np.arange(1, len(laps) + 1)
 
-        result = stats.linregress(lap_nums, times_ms)
-        slope = result.slope
-        intercept = result.intercept
-        r_value = result.rvalue
+        intercept_lin, slope_lin, r2_lin = self._fit_linear(lap_nums, times_ms)
+        intercept_quad, slope_quad, r2_quad = self._fit_quadratic(lap_nums, times_ms)
+        intercept_exp, slope_exp, r2_exp = self._fit_exponential(lap_nums, times_ms)
 
-        baseline_time = intercept
-        degradation_rate = slope
-        r_squared = r_value**2
+        # Select best model based on R²
+        models = {
+            "linear": (r2_lin, "linear", intercept_lin, slope_lin),
+            "quadratic": (r2_quad, "quadratic", intercept_quad, slope_quad),
+            "exponential": (r2_exp, "exponential", intercept_exp, slope_exp),
+        }
+
+        best_model = max(models.items(), key=lambda x: x[1][0])
+        model_name = best_model[0]
+        r_squared, model_type, baseline_time, degradation_rate = best_model[1]
 
         laps_until_limit = 999
         if degradation_rate > 0:
@@ -102,6 +198,9 @@ class TireDegradationAnalyzer:
             baseline_time_ms=baseline_time,
             degradation_rate_ms_per_lap=degradation_rate,
             r_squared=r_squared,
+            model_type=model_type,
+            r_squared_quadratic=r2_quad,
+            r_squared_exponential=r2_exp,
             estimated_tyre_life_laps=laps_until_limit,
         )
 
@@ -110,7 +209,7 @@ class TireDegradationAnalyzer:
 
     def export_json(
         self, session_data, output_file: str = "cpp/ipc/tire_data_in.json"
-    ) -> None:
+    ) -> None: # json for C++ I/O
         laps_data = []
         for lap in session_data.laps:
             if lap.lap_time is None:
@@ -153,7 +252,6 @@ class TireDegradationAnalyzer:
             json.dump(export_data, f, indent=2)
 
     def import_json(self, input_file: str = "cpp/ipc/tire_data_out.json") -> None:
-        """Import C++ Pacejka results"""
         try:
             with open(input_file, "r") as f:
                 data = json.load(f)
@@ -195,7 +293,6 @@ class TireDegradationAnalyzer:
 def analyze_stint(
     session_data, driver: str, compound: str, stint: int
 ) -> Optional[TireDegradationResult]:
-    """Analyze one stint"""
     filtered_laps = [
         lap
         for lap in session_data.laps
