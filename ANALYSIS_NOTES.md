@@ -1,94 +1,100 @@
 # F1 Tire Degradation Analysis - Technical Notes
 
-## Current Status (March 2026)
+## Current Status (roadmap for clarity since I work one 3 projects)
 
-### What We've Learned
+### Qualifying Data, Step One (validates & proofs, if the three models are enough)
 
 **Testing**: 2024 Monaco Grand Prix Qualifying Session
 - **Total stints analyzed**: 46 (across 20 drivers)
-- **Average stint length**: 3-7 laps
+- **Average stint length**: 3-7 laps (one of our big issue with qualifying data)
 - **Meaningful fits** (R² > 0.3): 1 out of 46 (2.2%)
-- **Median R²**: 0.09 (linear regression)
+- **Median R²**: 0.09 (linear regression) -> horrendously bad determination coefficient median! 
 
-**Conclusion**: Qualifying data is NOT suitable for tire degradation modeling.
-
----
-
-## Why Linear Regression Failed
-
-### Root Causes (Ranked by Impact)
-
-1. **Insufficient Data Points** (Impact: Very High)
-   - Qualifying stints: 2-7 laps
-   - Tire degradation needs: 20+ data points for statistical significance
-   - With n=3, any 3-parameter polynomial fits with R²=1.0 (degenerate)
-   - **Fix**: Minimum 3 laps requirement implemented ✓
-
-2. **Tire Temperature Ramp-Up** (Impact: High)
-   - Laps 1-2: Tires cold, lap time artificially slow
-   - Lap 3+: Optimal temperature zone
-   - This creates a non-monotonic trend (fast improvement, then slow degradation)
-   - **Fix needed**: Filter lap 1 per stint, use lap 2 as baseline
-
-3. **Session Strategy Noise** (Impact: High)
-   - Drivers push hard on one run, conservative on next
-   - Engineers optimize setup between runs
-   - Track/ambient temperature drifts during session
-   - **Fix needed**: Classify runs by intent (qualifying vs. practicing)
-
-4. **One-Lap Focus** (Impact: Medium)
-   - Qualifying emphasizes single-lap optimization
-   - No consistent pace like in races
-   - Varying fuel load between runs
-   - **Fix needed**: Filter outlier laps, smooth with moving average
-
-5. **Traffic & Position Loss** (Impact: Medium)
-   - Yellow flags force early returns
-   - Backmarkers affect ideal line availability
-   - Queue effects at chicanes
-   - **Fix needed**: Detect car-following detection from telemetry
+**Conclusion**: Qualifying data is NOT suitable for tire degradation modeling and the three models are not valid enough for real tyre degradation
 
 ---
 
-## Solution: Switch to Race Data
+### Phase 2: Race Data Analysis 
 
-### Why Race Data Works Better
+**Testing**: 2022 British Grand Prix - Race Session
+- **Total stints analyzed**: 46 (across 17 drivers)
+- **Total laps processed**: 674 valid laps (big improvement to qualifiyind rounds)
+- **Average stint length**: 11.5 laps
+- **Average R²**: 0.444 (vs 0.09 from qualifying) 
+- **4.9x improvement!**
+- **High-quality fits** (R² > 0.6): 13 out of 46 (28.3%)
+- **Medium-quality fits** (0.3 ≤ R² ≤ 0.6): 19 out of 46 (41.3%)
 
-| Metric | Qualifying | Race |
-|--------|------------|------|
-| **Stint length** | 2-7 laps | 20-70 laps |
+**Model distribution**:
+- Quadratic: 40 stints (87%)
+- Linear: 4 stints (8.7%)
+- Exponential: 2 stints (4.3%)
+
+**Best fits**:
+1. NOR HARD Stint 3: R² = 0.974 (4 laps, -215.50 ms/lap) 
+2. HAM HARD Stint 3: R² = 0.969 (4 laps, -261.70 ms/lap)
+3. VET MEDIUM Stint 3: R² = 0.906 (31 laps, minimal degradation)
+
+---
+
+## Why Race Data Works Better
+
+| Metric | Qualifying | Race (2022 British) |
+|--------|------------|-----|
+| **Stint length** | 2-7 laps | 3-32 laps |
+| **Average R²** | 0.09 | 0.444 |
+| **High-quality stints** | 2.2% | 28.3% |
 | **Tire warm-up** | Not complete | Fully warm after lap 3 |
 | **Driver focus** | Qualifying (one lap) | Pace/strategy (consistent) |
 | **Fuel load** | Varies (quali trim) | Predictable (fuel delta) |
-| **Expected R²** | 0.05-0.4 | 0.6-0.95 |
+
+**Key Insight**: Race data provides 4.9x better average fit than qualifying, but still needs preprocessing to reach target R² > 0.6 across majority of stints. We could get a determination coefficient by reducing factors like temp, competition or fuel. Instead of simplyfing our issue, we need to create a new modell (pacejka), to include physical effects. 
+
+---
 
 ### Cached Race Data Available
 
 **2022 British Grand Prix - Race**:
-- 71 laps total
-- 20 drivers
-- Multiple pit stops (3 stints each)
+- 71 laps total, 674 valid laps processed
+- 46 stints across 17 drivers
 - Mix of tire compounds (Soft, Medium, Hard)
-- **Estimated stints suitable for analysis**: ~60% of total
+- **Actual stints suitable for analysis**: 46 out of 46 (100%)
+- **High-quality stints**: 13 (28.3%)
 
 ---
 
 ## Implementation Roadmap
 
-### Phase 2: Race Data Validation (Week 1)
+### Phase 2: Race Data Validation
 
-```python
-# Load race data and run analysis
-from core.data_loader import load_session
-from features.tyre_degradation import analyze_all
-
-session = load_session(2022, "British", "R")  # Load race
-results = analyze_all(session)
-
-# Expected: 30+ stints with R² > 0.6
-high_quality_fits = {k: v for k, v in results.items() if v.r_squared > 0.6}
-print(f"High-quality fits: {len(high_quality_fits)} out of {len(results)}")
+**Script**: `analyze_race_data.py`
+```bash
+cd /Users/finn/dev/f1_performance_tool/f1_performance_tool
+uv run python analyze_race_data.py
 ```
+
+**Output files** (in `analysis_results/`):
+- `race_analysis_2022_British_R_<timestamp>.json` - Full data
+- `race_analysis_2022_British_R_<timestamp>.md` - Human-readable report
+
+**Results Summary**:
+```
+Average R²:                    0.444 (vs 0.09 from qualifying)
+High quality (R² > 0.6):      13 stints (28.3%)
+Medium quality (0.3-0.6):     19 stints (41.3%)
+Low quality (R² < 0.3):       14 stints (30.4%)
+
+Best fit:                      NOR HARD Stint 3 (R² = 0.974)
+Quadratic model dominance:     40/46 stints (87%)
+```
+
+**Conclusions**:
+- Race data is significantly better than qualifying
+- Quadratic model is best fit for most stints
+- Still need preprocessing to improve remaining 72% of stints
+- Target: Phase 3 should push >60% to R² > 0.6
+
+---
 
 ### Phase 3: Data Preprocessing (Week 2-3)
 
@@ -168,7 +174,7 @@ Links lap time directly to grip coefficient loss.
 
 ---
 
-## Technical Improvements Completed ✅
+## Technical Improvements Completed 
 
 1. **Multi-model selection**: Linear, Quadratic, Exponential
    - Auto-selects best fit based on R²

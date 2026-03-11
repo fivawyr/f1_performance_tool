@@ -16,12 +16,6 @@ For getting the results of my analysis and the interpretion for R² values, chec
 """ 
 TIRE DEGRADATION MODELING - MULTI-PHASE APPROACH
 
-Phase 1 (Current): Empirical Curve Fitting
-  - Three models: Linear, Quadratic, Exponential
-  - Purpose: Pattern recognition in raw data
-  - Question: "How do tires degrade empirically?"
-  - Expected R²: 0.2-0.6 for Qualifying, 0.6-0.9 for Race
-
 Phase 2 (Next): Data Preprocessing
   - Lap filtering, fuel correction, temperature correction
   - Goal: Reduce noise to improve fits
@@ -146,7 +140,6 @@ class TireDegradationAnalyzer:
     ) -> Tuple[float, float, float]:
         """Fit exponential model: y = a * (1 - exp(-b*x))"""
         try:
-            # Initial guess
             popt, _ = curve_fit(
                 self._exponential_model,
                 lap_nums,

@@ -6,50 +6,15 @@
 
 ## What This Tool Does
 
-- **Live Session Analysis**: Load F1 qualifying/race sessions via FastF1
+- **Session Analysis**: Load F1 qualifying/race sessions via FastF1
 - **Lap Comparison**: Compare two drivers lap-by-lap with sector deltas
 - **Sector Analysis**: Find fastest drivers per sector, identify strengths/weaknesses  
 - **Tire Degradation**: **Multi-model regression** (linear, quadratic, exponential) &rarr; replaced with Pacejka (since the results are not representing enough)
 - **Interactive CLI**: Rich terminal UI with tables, dropdowns, formatted displays
 - **JSON Export**: Prepare data for C++ Pacejka Magic Formula analysis (future)
-
----
-
-## Current Features 
-
-### Core Infrastructure
-- **Data Models** (`core/models.py`)
-  - `LapData`: Full lap telemetry (time, sectors, speeds, tire info)
-  - `SessionData`: Session wrapper with driver list
-  - `ComparisonResult`: Structured comparison results
-  
-- **Data Loader** (`core/data_loader.py`)
-  - Load FastF1 sessions with automatic caching
-  - Filter valid laps (IsAccurate=True, LapTime exists)
-  - Extract driver codes from lap data
-  
-- **Analysis Functions** (`core/analysis.py`)
-  - `compare_laps()`: Side-by-side lap comparison with sector breakdown
-  - `find_best_lap_per_driver()`: Best lap identification
-  - `find_fastest_sector()`: Sector leader board
-  - `analyze_tyre_degradation()`: Raw lap time trend analysis
-
-- **Interactive CLI** (`ui/menus.py`)
-  - Driver selection dropdowns
-  - Rich formatted output (tables, split-screen panels)
-  - Lap comparison display with delta highlighting
-  - Sector analysis top-10 rankings
-  - Tire degradation visualizations
-
-### Advanced Features
-- **Tire Degradation Model** (`features/tyre_degradation.py`)
-  - **Multi-model regression**: Linear, Quadratic, Exponential
-  - Automatic best-fit selection based on R² value
-  - F1 2026 vehicle parameters (768 kg, 760 kW, 34 kN brakes)
-  - Pacejka Magic Formula placeholders (ready for C++ integration)
-  - JSON export for C++ analysis pipeline
-  - `AnalysisKey` dataclass for clean result identification
-  - Minimum stint length: 3 laps (prevents degenerate fitting)
+- **Physics Model**: Aero Coefficients (future)
+- **Actual laptime simulation**: (future)
+- **Powertrain Model**: (future)
 
 ---
 
@@ -77,7 +42,6 @@ uv run python main.py
 uv run python test_analysis.py
 uv run python test_tyre_degradation.py
 ```
-
 ---
 
 ## Tire Degradation Analysis
@@ -91,6 +55,7 @@ The analyzer automatically fits **three regression models** and selects the best
 3. **Exponential Model**: $T(n) = T_0 + a(1 - e^{-\lambda n})$
 
 Each model computes an R² goodness-of-fit score. The best model is selected automatically.
+**What are those model?**: We use them as empirial fits, to lay the graph on the actual data &rarr; this is called **Regression Analysis** and the result of the **Goodness-of-Fit-Comparision** shows, that we need to use something more accurate (pacejka)
 
 **Example Output:**
 ```
@@ -99,7 +64,42 @@ HAM SOFT Stint 1:
   Degradation: 0.0 ms/lap (Quadratic)
   R²: 0.195 (vs linear: 0.003, exponential: varies)
 ```
+```
+EMPIRISCHE MODELS:
+┌──────────────────────────────────┐
+│  Lap Time                        │
+│        ╱╱                        │
+│      ╱╱  ← Quadratic Fit         │
+│    ╱╱                            │
+│   • ← Actual data                │
+│    •                             │
+│      •                           │
+│        •                         │
+└──────────────────────────────────┘
+          Lap Number
 
+Problem: Curve looks good, but why is not enough?
+        → Regression Analysis are just checks for data fitting, no physics!
+
+
+PACEJKA-MODEL:
+┌──────────────────────────────────┐
+│  Lap Time                        │
+│        ╱╱                        │
+│      ╱╱  ← Physics-based Curve   │
+│    ╱╱                            │
+│   • ← Actual data                │
+│    •                             │
+│      •                           │
+│        •                         │
+└──────────────────────────────────┘
+          Lap Number
+
+Advantage: Incorporating real conditions (physical)
+         "Tyre age → lose of grip → lose of lap time"
+```
+
+---
 ### Why Qualifying Data is Challenging
 
 Analysis of 2024 Monaco Qualifying reveals why tire degradation is hard to model:
@@ -131,6 +131,7 @@ Analysis of 2024 Monaco Qualifying reveals why tire degradation is hard to model
 - Best fit: Sergio Pérez SOFT Stint 3 (R² = 0.412)
 
 **Conclusion**: Qualifying sessions are **unsuitable** for tire degradation modeling.
+> for more information, checkout the ANALYSIS_NOTE.md
 
 ---
 
