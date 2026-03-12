@@ -174,25 +174,6 @@ Links lap time directly to grip coefficient loss.
 
 ---
 
-## Technical Improvements Completed 
-
-1. **Multi-model selection**: Linear, Quadratic, Exponential
-   - Auto-selects best fit based on R²
-   - Allows for non-linear degradation curves
-
-2. **Minimum stint threshold**: 3 laps
-   - Prevents degenerate fitting with 2 points
-   - Allows polynomial models
-
-3. **Enhanced output**: Model type and all three R² values
-   - Allows comparison across model families
-   - Highlights where quadratic fits better than linear
-
-4. **Color-coded output**: R² > 0.7 (green), 0.4-0.7 (yellow), < 0.4 (red)
-   - Quick visual identification of good fits
-
----
-
 ## Next Steps
 
 1. **Immediate**: Run test on 2022 British GP race data
