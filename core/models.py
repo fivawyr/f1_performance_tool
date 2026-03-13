@@ -23,7 +23,7 @@ class LapData:
     brake_trace: Optional[List[float]] = None
     speed_trace: Optional[List[float]] = None
     position_data: Optional[tuple] = None  
-
+    # we dont get fuel_loads from fastf1, so I need to calculate it on data_processing 
 @dataclass
 class SessionData:
     year: int

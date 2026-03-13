@@ -17,19 +17,17 @@ console = Console()
 
 def print_analysis_summary(
     results: Dict[Tuple[str, str, int], TireDegradationResult],
-    session_data: SessionData
-) -> None:
+    session_data: SessionData) -> None:
     
     console.print()
     console.print(Panel(
         f"[bold cyan]{session_data.year} {session_data.event} {session_data.session_type}[/bold cyan]",
-        expand=False
-    ))
+        expand=False))
     
     console.print(f"\n[bold]Analysis Results:[/bold]")
-    console.print(f"  Total stints analyzed: {len(results)}")
-    console.print(f"  Total laps in session: {len(session_data.laps)}")
-    console.print(f"  Unique drivers: {len(session_data.drivers)}")
+    console.print(f"Total stints analyzed: {len(results)}")
+    console.print(f"Total laps in session: {len(session_data.laps)}")
+    console.print(f"Unique drivers: {len(session_data.drivers)}")
     
     r_squared_values = [r.r_squared for r in results.values()]
     if r_squared_values:
@@ -38,18 +36,18 @@ def print_analysis_summary(
         min_r2 = min(r_squared_values)
         
         console.print(f"\n[bold]R² Statistics:[/bold]")
-        console.print(f"  Average R²: {avg_r2:.3f}")
-        console.print(f"  Max R²: {max_r2:.3f}")
-        console.print(f"  Min R²: {min_r2:.3f}")
+        console.print(f"Average R²: {avg_r2:.3f}")
+        console.print(f"Max R²: {max_r2:.3f}")
+        console.print(f"Min R²: {min_r2:.3f}")
         
         high_quality = sum(1 for r in r_squared_values if r > 0.6)
         medium_quality = sum(1 for r in r_squared_values if 0.3 <= r <= 0.6)
         low_quality = sum(1 for r in r_squared_values if r < 0.3)
         
         console.print(f"\n[bold]Quality Distribution:[/bold]") # percentage representation of the amount of model use
-        console.print(f"  [green]High quality (R² > 0.6)[/green]: {high_quality} ({100*high_quality/len(results):.1f}%)")
-        console.print(f"  [yellow]Medium quality (0.3 ≤ R² ≤ 0.6)[/yellow]: {medium_quality} ({100*medium_quality/len(results):.1f}%)")
-        console.print(f"  [red]Low quality (R² < 0.3)[/red]: {low_quality} ({100*low_quality/len(results):.1f}%)")
+        console.print(f"[green]High quality (R² > 0.6)[/green]: {high_quality} ({100*high_quality/len(results):.1f}%)")
+        console.print(f"[yellow]Medium quality (0.3 ≤ R² ≤ 0.6)[/yellow]: {medium_quality} ({100*medium_quality/len(results):.1f}%)")
+        console.print(f"[red]Low quality (R² < 0.3)[/red]: {low_quality} ({100*low_quality/len(results):.1f}%)")
     
     model_counts = {}
     for result in results.values():
@@ -119,8 +117,7 @@ def print_detailed_results(results: Dict[Tuple[str, str, int], TireDegradationRe
 def save_results_to_file(
     results: Dict[Tuple[str, str, int], TireDegradationResult],
     session_data: SessionData,
-    output_dir: str = "analysis_results"
-) -> str:
+    output_dir: str = "analysis_results") -> str:
     
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
@@ -225,16 +222,16 @@ def main():
     
     if avg_r2 > 0.6:
         console.print(f"\n[green]✓ SUCCESS![/green] Average R² = {avg_r2:.3f}")
-        console.print("  Race data shows strong degradation patterns!")
-        console.print("  Proceed to Phase 3: Data Preprocessing")
+        console.print("Race data shows strong degradation patterns!")
+        console.print("Proceed to Phase 3: Data Preprocessing")
     elif avg_r2 > 0.3:
         console.print(f"\n[yellow]⚠ PARTIAL SUCCESS[/yellow] Average R² = {avg_r2:.3f}")
-        console.print("  Race data shows moderate patterns.")
-        console.print("  Phase 3 preprocessing should improve results significantly.")
+        console.print("Race data shows moderate patterns.")
+        console.print("Phase 3 preprocessing should improve results significantly.")
     else:
         console.print(f"\n[red]✗ LIMITED SUCCESS[/red] Average R² = {avg_r2:.3f}")
-        console.print("  Even race data shows weak patterns.")
-        console.print("  May need fuel correction or temperature adjustment in Phase 3.")
+        console.print("Even race data shows weak patterns.")
+        console.print("May need fuel correction or temperature adjustment in Phase 3.")
     
     console.print("\n" + "="*70)
 

@@ -14,7 +14,7 @@ console = Console()
 team = select_team()
 show_banner(team)
 
-console.print("[bold cyan]Loading default session (2024 Monaco Qualifying)...[/bold cyan]\n")
+console.print("[bold cyan]Loading default session (2024 Monaco Qualifying)/bold cyan]\n")
 session_data = load_session(2024, "Monaco", "Q")
 
 while True:
@@ -34,7 +34,7 @@ while True:
                 console.print(f"\n[green]Session loaded: {year} {event} {session_type}[/green]")
             except Exception as e:
                 console.print(f"[red]Error loading session: {e}[/red]")
-        console.input("[dim]Press Enter to continue...[/dim]")
+        console.input("[dim]Press Enter to continue[/dim]")
         console.clear()
     
     elif choice == "exit":

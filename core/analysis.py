@@ -40,7 +40,7 @@ def compare_laps(lap1: LapData, lap2: LapData) -> Optional[ComparisonResult]:
     if lap1.speed_st is not None and lap2.speed_st is not None:
         speed_diff = lap2.speed_st - lap1.speed_st
         if speed_diff < -5:  
-            improvement_areas.append(f"Speed Trap: {speed_diff:.1f} km/h slower") 
+            improvement_areas.append(f"Speed Trap: {speed_diff:.1f} km/h") 
 
     return ComparisonResult(
         driver1=lap1.driver,

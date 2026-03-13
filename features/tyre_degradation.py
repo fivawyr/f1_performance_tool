@@ -8,12 +8,12 @@ from scipy.optimize import curve_fit
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import Ridge
 from sklearn.pipeline import Pipeline
+from core.data_processing import preprocess_stint
 
 """
 For getting the results of my analysis and the interpretion for R² values, check ANALYSIS_NOTES.md
 @author fivawyr
-"""
-""" 
+
 TIRE DEGRADATION MODELING - MULTI-PHASE APPROACH
 
 Phase 2 (Next): Data Preprocessing
@@ -31,7 +31,7 @@ Phase 4 (Advanced): Full Pacejka Integration
   - Multi-variate input (age, temp, load, slip)
   - Expected R²: 0.85+
 
-Ref: https://en.wikipedia.org/wiki/Hans_Pacejka
+ref.: https://en.wikipedia.org/wiki/Hans_Pacejka
 """
 @dataclass
 class vehicle_parameters:
@@ -101,14 +101,12 @@ class TireDegradationAnalyzer:
         self.results: List[TireDegradationResult] = []
 
     @staticmethod
-    def _exponential_model(x: np.ndarray, a: float, b: float) -> np.ndarray:
-        """Exponential decay model: y = a * (1 - exp(-b*x))"""
+    def _exponential_model(x: np.ndarray, a: float, b: float) -> np.ndarray: # ndarray since we getting only floats and getting high speed 
         return a * (1 - np.exp(-b * x))
 
     def _fit_linear(
         self, lap_nums: np.ndarray, times_ms: np.ndarray
     ) -> Tuple[float, float, float]:
-        """Fit linear model: y = intercept + slope*x"""
         result = stats.linregress(lap_nums, times_ms)
         r_squared = result.rvalue**2
         return result.intercept, result.slope, r_squared
@@ -116,8 +114,6 @@ class TireDegradationAnalyzer:
     def _fit_quadratic(
         self, lap_nums: np.ndarray, times_ms: np.ndarray
     ) -> Tuple[float, float, float]:
-        """Fit quadratic model: y = a + b*x + c*x^2"""
-        try:
             pipe = Pipeline([
                 ("poly_features", PolynomialFeatures(degree=2)),
                 ("ridge_regression", Ridge(alpha=1.0))
@@ -126,19 +122,14 @@ class TireDegradationAnalyzer:
             y_pred = pipe.predict(lap_nums.reshape(-1, 1))
             ss_res = np.sum((times_ms - y_pred) ** 2)
             ss_tot = np.sum((times_ms - np.mean(times_ms)) ** 2)
-            r_squared = 1 - (ss_res / ss_tot)
-            
-            # Extract coefficients
+            r_squared = 1 - (ss_res / ss_tot)            
             coef = pipe.named_steps["ridge_regression"].coef_
             intercept = pipe.named_steps["ridge_regression"].intercept_
             return intercept, coef[0], r_squared
-        except:
-            return 0, 0, 0
 
     def _fit_exponential(
         self, lap_nums: np.ndarray, times_ms: np.ndarray
     ) -> Tuple[float, float, float]:
-        """Fit exponential model: y = a * (1 - exp(-b*x))"""
         try:
             popt, _ = curve_fit(
                 self._exponential_model,
@@ -148,7 +139,7 @@ class TireDegradationAnalyzer:
                 maxfev=10000
             )
             y_pred = self._exponential_model(lap_nums, *popt)
-            ss_res = np.sum((times_ms - np.min(times_ms) - y_pred) ** 2)
+            ss_res = np.sum((times_ms - np.min(times_ms) - y_pred) ** 2) #res and tot calculation
             ss_tot = np.sum((times_ms - np.min(times_ms) - np.mean(times_ms - np.min(times_ms))) ** 2)
             r_squared = 1 - (ss_res / ss_tot) if ss_tot > 0 else 0
             return np.min(times_ms), popt[1], r_squared
@@ -159,11 +150,13 @@ class TireDegradationAnalyzer:
         # Minimum stint length: 3 laps for meaningful analysis, with 2 laps, quadratic polynomial always overfits with R²=1.0!!
         if not laps or len(laps) < 3:
             return None
+        
+        times_ms = preprocess_stint(laps)    
 
-        times_ms = np.array(
-            [lap.lap_time.total_seconds() * 1000 for lap in laps]
-        )
-        lap_nums = np.arange(1, len(laps) + 1)
+        if len(times_ms) < 3:
+            return None
+    
+        lap_nums = np.arange(1, len(times_ms) + 1)
 
         intercept_lin, slope_lin, r2_lin = self._fit_linear(lap_nums, times_ms)
         intercept_quad, slope_quad, r2_quad = self._fit_quadratic(lap_nums, times_ms)
