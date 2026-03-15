@@ -221,15 +221,15 @@ def main():
     avg_r2 = sum(r_squared_values) / len(r_squared_values)
     
     if avg_r2 > 0.6:
-        console.print(f"\n[green]✓ SUCCESS![/green] Average R² = {avg_r2:.3f}")
+        console.print(f"\n[green]SUCCESS![/green] Average R² = {avg_r2:.3f}")
         console.print("Race data shows strong degradation patterns!")
         console.print("Proceed to Phase 3: Data Preprocessing")
     elif avg_r2 > 0.3:
-        console.print(f"\n[yellow]⚠ PARTIAL SUCCESS[/yellow] Average R² = {avg_r2:.3f}")
+        console.print(f"\n[yellow]PARTIAL SUCCESS[/yellow] Average R² = {avg_r2:.3f}")
         console.print("Race data shows moderate patterns.")
         console.print("Phase 3 preprocessing should improve results significantly.")
     else:
-        console.print(f"\n[red]✗ LIMITED SUCCESS[/red] Average R² = {avg_r2:.3f}")
+        console.print(f"\n[red]LIMITED SUCCESS[/red] Average R² = {avg_r2:.3f}")
         console.print("Even race data shows weak patterns.")
         console.print("May need fuel correction or temperature adjustment in Phase 3.")
     

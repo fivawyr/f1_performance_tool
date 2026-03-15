@@ -16,6 +16,7 @@ from core.analysis import (
     analyze_tyre_degradation
 )
 
+# claude helped me with the rich/simple_term_menu funciotns, since its repeditive to read the whole doc 
 console = Console()
 
 
@@ -151,7 +152,7 @@ def display_comparison_result(comparison, lap1, lap2):
     console.print(Columns([left_panel, right_content], equal=False))
     
     # Key insights
-    console.print("\n[bold yellow]📌 Key Insights:[/bold yellow]")
+    console.print("\n[bold yellow]Key Insights:[/bold yellow]")
     for area in comparison.improvement_areas:
         console.print(f"  • {area}")
 
@@ -234,7 +235,7 @@ def display_tire_degradation(session_data):
     
     console.print(Panel(table, title="[bold]Degradation Analysis[/bold]", border_style="cyan"))
     
-    console.print("\n[dim]⚠️  Note: Raw lap times include multiple factors (temp, traffic, etc.)[/dim]")
+    console.print("\n[dim]Note: Raw lap times include multiple factors (temp, traffic, etc.)[/dim]")
     console.print("[dim]For pure tire degradation analysis, use fuel-corrected times.[/dim]")
 
 

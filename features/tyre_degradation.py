@@ -14,13 +14,6 @@ from core.data_processing import preprocess_stint
 For getting the results of my analysis and the interpretion for R² values, check ANALYSIS_NOTES.md
 @author fivawyr
 
-TIRE DEGRADATION MODELING - MULTI-PHASE APPROACH
-
-Phase 2 (Next): Data Preprocessing
-  - Lap filtering, fuel correction, temperature correction
-  - Goal: Reduce noise to improve fits
-  - Expected R²: +0.2 improvement
-
 Phase 3 (Future): Physics-Based Hybrid Model
   - Derive tire grip loss from Pacejka formula
   - Link lap time to grip degradation

@@ -1,4 +1,4 @@
-# small python script - helper function for checking fastf1 data. We can clarify the output by 
+# small python script helper function for checking fastf1 data. We can clarify the output by 
 # taking a small prove of the dataset 
 
 import fastf1
@@ -19,16 +19,16 @@ with console.status("[cyan]Loading session...", spinner="dots"):
 
 console.print("[green]Session loaded![/green]\n")
 
-console.print("[bold #1C69D4]── Event Info ──[/bold #1C69D4]")
+console.print("[bold #1C69D4]Event Info[/bold #1C69D4]")
 pprint(dict(session.event))
 
-console.print("\n[bold #1C69D4]── Drivers ──[/bold #1C69D4]")
+console.print("\n[bold #1C69D4]Drivers[/bold #1C69D4]")
 pprint(session.drivers)
 
-console.print("\n[bold #1C69D4]── Raw Laps (first 10) ──[/bold #1C69D4]")
+console.print("\n[bold #1C69D4]Raw Laps (first 10)[/bold #1C69D4]")
 pprint(session.laps.head(10).to_dict(orient="records"))
 
-console.print("\n[bold #1C69D4]── Fastest Lap per Driver ──[/bold #1C69D4]")
+console.print("\n[bold #1C69D4]Fastest Lap per Driver[/bold #1C69D4]")
 fastest = session.laps.groupby("Driver")["LapTime"].min().sort_values().reset_index()
 
 table = Table(header_style="bold #1C69D4", border_style="dim")
@@ -41,5 +41,5 @@ for i, (_, row) in enumerate(fastest.iterrows(), start=1):
 
 console.print(table)
 
-console.print("\n[bold #1C69D4]── Available Columns in session.laps ──[/bold #1C69D4]")
+console.print("\n[bold #1C69D4]Available Columns in session.laps[/bold #1C69D4]")
 pprint(list(session.laps.columns))
