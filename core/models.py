@@ -24,6 +24,10 @@ class LapData:
     speed_trace: Optional[List[float]] = None
     position_data: Optional[tuple] = None  
     # we dont get fuel_loads from fastf1, so I need to calculate it on data_processing 
+    estimated_surface_temp: Optional[float] = None
+    estimated_core_temp: Optional[float] = None
+    tyre_in_optimal_window: Optional[bool] = None
+    
 @dataclass
 class SessionData:
     year: int

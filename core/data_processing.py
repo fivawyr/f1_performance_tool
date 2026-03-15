@@ -1,12 +1,30 @@
 import numpy as np
 from typing import List
 from core.models import LapData
+from features.tyre_temperature import estimate_tyre_temp
 
 FUEL_START_KG = 110.0
 FUEL_PER_LAP_KG = 1.8
 FUEL_EFFECT_PER_KG = 0.03
 TRAFFIC_THRESHOLD = 0.02
 
+def add_tyre_temps(laps: List[LapData], weather_per_lap: List[dict]) -> List[LapData]:
+    for lap, weather in zip(laps, weather_per_lap):
+        avg_speed = np.mean(lap.speed_trace) if lap.speed_trace else 180.0
+        result = estimate_tyre_temp(
+            track_temp=float(weather.get("TrackTemp", 30)),
+            air_temp=float(weather.get("AirTemp", 20)),
+            speed_kmh=avg_speed,
+            compound=lap.tyre_compound,
+            tyre_age=lap.tyre_age,
+            wind_speed=float(weather.get("WindSpeed", 0)),
+            rainfall=bool(weather.get("Rainfall", False)),
+            fresh_tyre=(lap.tyre_age <= 1),
+        )
+        lap.estimated_surface_temp = result["surface_temp"]
+        lap.estimated_core_temp = result["core_temp"]
+        lap.tyre_in_optimal_window = result["in_optimal_window"]
+    return laps
 
 def filter_stint(laps: List[LapData]) -> List[LapData]:
     return laps[1:-1]

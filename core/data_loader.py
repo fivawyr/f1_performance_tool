@@ -1,6 +1,7 @@
 import os
 import fastf1
 from core.models import LapData, SessionData
+from features.tyre_temperature import estimate_tyre_temp
 from rich.console import Console
 import pandas as pd
 
@@ -13,7 +14,7 @@ def load_session(year: int, event: str, session_type: str) -> SessionData:
     
     with console.status("[cyan]Loading session...", spinner="dots"):
         session = fastf1.get_session(year, event, session_type)
-        session.load()
+        session.load(weather=True)
     
     console.print(f"[green] Session loaded: {year} {event} {session_type}[/green]")
 
@@ -52,7 +53,28 @@ def get_lap_data_from_row(lap_row) -> LapData:
     speed_i2 = lap_row['SpeedI2'] if not pd.isna(lap_row['SpeedI2']) else None
     speed_fl = lap_row['SpeedFL'] if not pd.isna(lap_row['SpeedFL']) else None
     speed_st = lap_row['SpeedST'] if not pd.isna(lap_row['SpeedST']) else None 
-    
+    weather = lap_row.get_weather_data()
+    track_temp = float(weather['TrackTemp'].mean()) if not weather.empty else 30.0
+    air_temp = float(weather['AirTemp'].mean()) if not weather.empty else 20.0
+    wind_speed = float(weather['WindSpeed'].mean()) if not weather.empty else 0.0
+    rainfall = bool(weather['Rainfall'].any()) if not weather.empty else False
+
+    avg_speed = float(speed_st) if speed_st is not None else 180.0
+
+    tyre_age = int(lap_row['TyreLife'])
+    compound = lap_row['Compound']
+
+    tyre_temps = estimate_tyre_temp(
+        track_temp=track_temp,
+        air_temp=air_temp,
+        speed_kmh=avg_speed,
+        compound=compound,
+        tyre_age=tyre_age,
+        wind_speed=wind_speed,
+        rainfall=rainfall,
+        fresh_tyre=(tyre_age <= 1),
+    )
+
     return LapData(
         driver=lap_row['Driver'],
         lap_number=int(lap_row['LapNumber']),
@@ -73,7 +95,10 @@ def get_lap_data_from_row(lap_row) -> LapData:
         throttle_trace=None,
         brake_trace=None,
         speed_trace=None,
-        position_data=None
+        position_data=None,
+        estimated_surface_temp=tyre_temps["surface_temp"],
+        estimated_core_temp=tyre_temps["core_temp"],
+        tyre_in_optimal_window=tyre_temps["in_optimal_window"],
     )
 
 
