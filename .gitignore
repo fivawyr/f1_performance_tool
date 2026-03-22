@@ -36,3 +36,21 @@ dist/
 
 .env
 .env.local
+
+build/
+out/
+
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+CMakeConfigureLog.yaml
+
+tetris_main
+*.out
+*.bin
+*.exe
+
+.clangd
+
+compile_commands.json

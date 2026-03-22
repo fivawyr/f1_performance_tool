@@ -25,7 +25,7 @@
 ### Setup (with `uv`)
 ```bash
 git clone <repo-url>
-cd bmw_f1_project
+cd f1_performance_tool
 uv sync
 source .venv/bin/activate
 ```
@@ -115,19 +115,24 @@ This is the reason tyre temperature estimation matters: Pacejka needs temperatur
 See `ANALYSIS_NOTE.md` for full breakdown.
  
 ---
+## Pacejka 
+- Coefficients formulas: 
+![Alternativtext](ressources/pacejka_coeffizients.jpg)
+  (cf. "Tyre und Vehicle Dynamics", Hans B. Pacejka, 2. edition 2006)
+
  
 ## Future Architecture: F1 + LMH
  
 ```
 core/physics/
-├── vehicle.py            # VehicleSpec (mass, power, aero)
-├── tire_model.py         # Pacejka + tyre temperature model
-├── aero_model.py         # Downforce, drag calculations
-└── powertrain.py         # Engine, brake force curves
+├── vehicle.cpp           # VehicleSpec (mass, power, aero)
+├── tire_model.cpp        # Pacejka + tyre temperature model
+├── aero_model.cpp        # Downforce, drag calculations
+└── powertrain.cpp        # Engine, brake force curves
  
 features/
 ├── laptime_simulator.py  # Universal lap time prediction
-├── tyre_temperature # since we separate f1 and calc logic, we can use it for any race series
+├── tyre_temperature.py   # since we separate f1 and calc logic, we can use it for any race series
 └── telemetry_analysis.py # Cross-series comparisons
 ```
  
