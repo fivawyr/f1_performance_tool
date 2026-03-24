@@ -1,6 +1,7 @@
 #pragma once 
 #include "pacejkacoefficients.h" 
 #include <cmath>
+using namespace std;
 typedef double f64;
 
 struct Tyreforces {
@@ -14,6 +15,31 @@ struct Tyreforces {
  * Sh/Sv Horizontal shifts (how is the horizontal changes of the car - due to camber effects or tyre asymmetry -> Shy horizontal / svy vertical). 
  * Those coefficients are passed in the magic formula 
  */
+
+/*
+ * Pacejka Magic Formula 5.2 — Coefficient Reference
+ *
+ * INPUTS:
+ *   alpha  [rad]  Slip angle
+ *   kappa  [-]    Longitudinal slip (0=rolling, ±1=locked/spinning)
+ *   Fz     [N]    Normal load
+ *   gamma  [rad]  Camber angle
+ *
+ * BCDE CORE:
+ *   B  Stiffness  — scales the initial slope of the curve
+ *   C  Shape      — determines curve shape (sine-like vs. saturated)
+ *   D  Peak       — maximum force value [N]
+ *   E  Curvature  — curvature around the peak
+ *   Sh             Horizontal shift [rad]
+ *   Sv             Vertical shift [N]
+ *
+ * COEFFICIENT NAMING: p<quantity><direction><index>
+ *   Quantity:   C=shape, D=peak, K=stiffness, E=curvature, H=h.shift, V=v.shift
+ *   Direction:  x=longitudinal, y=lateral
+ *   Index:      1=base value, 2=load dependency (×dfz)
+ *
+ * Source: Pacejka, "Tyre and Vehicle Dynamics", 3rd ed. (2012), Appendix 3
+ */
 class PacejkaCalculation {
   public:
     explicit PacejkaCalculation(const PacejkaCoefficients& coeffs) : c_(coeffs) {}
@@ -21,11 +47,50 @@ class PacejkaCalculation {
     f64 calcFy(f64 alpha, f64 Fz, f64 gamma = 0.0) const {
       const f64 dfz = normLoadData(Fz); 
       const f64 Cy = c_.pCy1;
-      const f
+      const f64 mu_y = (c_.pDy1 + c_.pDy2 * dfz);
+      const f64 Dy = mu_y * Fz;
+      const f64 Ky = c_.pKy1 * c_.Fz0 * atan(2.0 * atan(Fz / (c_.pKy2 * c_.Fz0)));
+      const f64 By = Ky / (Cy * Dy + eps_); 
+      const f64 Ey = c_.pEy1 + c_.pEy2 * dfz;
+      const f64 Shy = c_cpHy1 + c_.pHy2 * dfz; 
+      const f64 Svy = (c_.pVy1 + c_.pVy2 * dfz) * Fz;
+
+      const f64 alpha_y = alpha + Shy;
+      return Dy * magicFormula(By, Cy, Ey, alpha_y) + Svy;
     }
+
+    f64 calcFx(f64 kappa, f64 Fz) const {
+      const f64 dfz = normLoadData(Fz);
+      const f64 Cx = c_.pCx1;
+      const f64 mu_x = (c_.pDx1 + c_.pDx2 * dfz);
+      const f64 Kx = Fz * (c_.pKx1 + c_.pKx2 * dfz);
+      const f64 Bx = Kx / (Cx * Dx + eps_);
+      const f64 Ex = c_.pEx1 + c_.pEx2 * dfz;
+      const f64 Shx = c_.pHx1 + c_.pHx2 * dfz; 
+      const f64 Svx = (c_.pVx1 + c_.pVx2 * dfz) * Fz;
+      const f64 kappa_x = kappa + Shx;
+      return Dx * magicFormula(Bx, Cx, Ex, kappa_x) + Svx;
+    }
+
+    //TODO: calcCombined
+
+    f64 calcAm(f64 alphal, f64 Fz, f64 Fy) const {
+      const f64 dfz = normLoadData(Fz)
+      const f64 Bt = c_.qBz1 + c_.qBz2 * dfz; 
+      const f64 Ct = c_.qCz1;
+      const f64 Dt = (c_.qDz1 + c_.qDz2 * dfz) * Fz;
+    }
+
   private:
     PacejkaCoefficients c_;
+    static constexpr f64 eps_ = 1e-9;
+
     f64 normLoadData(f64 Fz) const {
       return (Fz - c_.Fz0) / c_.Fz0; 
+    }
+
+    static f64 magicFormula(f64 B, f64 C, f64 E, f64 x) {
+      const f64 Bx = B * x;
+      return sin(C * atan(Bx - E * (Bx - atan(Bx))));
     }
 };
