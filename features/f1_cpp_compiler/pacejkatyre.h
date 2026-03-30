@@ -20,18 +20,18 @@ struct Tyreforces {
  * Pacejka Magic Formula 5.2 — Coefficient Reference
  *
  * INPUTS:
- *   alpha  [rad]  Slip angle
- *   kappa  [-]    Longitudinal slip (0=rolling, ±1=locked/spinning)
- *   Fz     [N]    Normal load
- *   gamma  [rad]  Camber angle
+ *   alpha  [rad]    Slip angle
+ *   kappa  [-]      Longitudinal slip (0=rolling, ±1=locked/spinning)
+ *   Fz     [N]      Normal load
+ *   gamma  [rad]    Camber angle
  *
  * BCDE CORE:
- *   B  Stiffness  — scales the initial slope of the curve
- *   C  Shape      — determines curve shape (sine-like vs. saturated)
- *   D  Peak       — maximum force value [N]
- *   E  Curvature  — curvature around the peak
- *   Sh             Horizontal shift [rad]
- *   Sv             Vertical shift [N]
+ *   B  Stiffness    scales the initial slope of the curve
+ *   C  Shape        determines curve shape (sine-like vs. saturated)
+ *   D  Peak         maximum force value [N]
+ *   E  Curvature    curvature around the peak
+ *   Sh              Horizontal shift [rad]
+ *   Sv              Vertical shift [N]
  *
  * COEFFICIENT NAMING: p<quantity><direction><index>
  *   Quantity:   C=shape, D=peak, K=stiffness, E=curvature, H=h.shift, V=v.shift
@@ -74,11 +74,22 @@ class PacejkaCalculation {
 
     //TODO: calcCombined
 
-    f64 calcAm(f64 alphal, f64 Fz, f64 Fy) const {
-      const f64 dfz = normLoadData(Fz)
+    f64 calcAm(f64 alpha, f64 Fz, f64 Fy) const {
+      const f64 dfz = normLoadData(Fz);
       const f64 Bt = c_.qBz1 + c_.qBz2 * dfz; 
       const f64 Ct = c_.qCz1;
       const f64 Dt = (c_.qDz1 + c_.qDz2 * dfz) * Fz;
+      const f64 Et = c_.qEz1;
+      const f64 Sht = c_.qHz1;
+
+      const f64 alpha_t = alpha + Sht;
+      const f64 t = Dt * magicFormula(Bt, Ct, Et, alpha_t);
+      
+      return -t * Fy;
+    }
+
+    Tyreforces calcCombined(f64 alpha, f64 kappa, f64 Fz, f64 gamma = 0.0) {
+      //TODO: Implement this func (Fx/Fy weighting)
     }
 
   private:
