@@ -24,12 +24,12 @@ def estimate_tyre_temp(track_temp, air_temp, speed, compound = "MEDIUM" ,tyre_ag
     q_road = 12.0 * (track_temp - air_temp) * 0.10
     v = max(speed, 0.0) / 200.0
 
-    tmp_friction = 38 * (v ** 1.6) * cfg[tmp_friction]
+    q_friction = 38 * (v ** 1.6) * cfg["friction"]
     f_age = 1.0 + 0.008 * min(tyre_age, 20) - 0.003 * max(0, tyre_age - 20)
     
     if fresh_tyre and tyre_age <= 2:
         f_age *= 0.80
-    q_friction = tmp_friction * f_age # just the calc for the Q_friction  
+    q_friction = 38 * (v ** 1.6) * cfg["friction"] * f_age # just the calc for the Q_friction  
 
     v_air = speed / 3.6 + max(wind_speed, 0.0)
     # At 50 m/s, the air does not cool twice as effectively as at 25 m/s, but only about 1.4 times as effectively 
@@ -79,7 +79,8 @@ if __name__ == "__main__":
         ("rain WET",       dict(track_temp=20, air_temp=15, speed_kmh=160, compound="WET",    tyre_age=3,  wind_speed=6, rainfall=True)),
         ("extrem HARD alt", dict(track_temp=55, air_temp=38, speed_kmh=240, compound="HARD",   tyre_age=40, wind_speed=1, rainfall=False)),
     ]
-for label, params in tests:
-    r = estimate_tyre_temp(**params)
-    w = f"{r['in_optimal_window'][0]} - {r['in_optimal_window'][1]}°C"
-    is_r_in_optmal_window = "Yes its in the optimal window" if r["in_optimal_window"] else "it's not in the optimal window" #simple ternal 
+    for label, params in tests:
+        r = estimate_tyre_temp(**params)
+        w = f"{r['optimal_window'][0]} - {r['optimal_window'][1]}°C"
+        is_r_in_optmal_window = "Yes its in the optimal window" if r["in_optimal_window"] else "it's not in the optimal window" 
+        print(f"{label}: {r['surface_temp']}°C ({w}) - {is_r_in_optmal_window}")

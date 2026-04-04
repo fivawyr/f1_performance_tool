@@ -67,7 +67,7 @@ def get_lap_data_from_row(lap_row) -> LapData:
     tyre_temps = estimate_tyre_temp(
         track_temp=track_temp,
         air_temp=air_temp,
-        speed_kmh=avg_speed,
+        speed=avg_speed,
         compound=compound,
         tyre_age=tyre_age,
         wind_speed=wind_speed,

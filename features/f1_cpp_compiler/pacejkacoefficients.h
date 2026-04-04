@@ -6,10 +6,11 @@ typedef double f64;
 
 struct PacejkaCoefficients {
     
-    f64 pCy1 = 1.3;  // Literal 
-    f64 pDy2 = -0.1;
-    f64 pEy1 = -1.0; 
-    f64 pEy2 = -0.5;
+    f64 pCy1 = 1.3;  // Lateral shape
+    f64 pDy1 = 1.0;  // Lateral peak coefficient base
+    f64 pDy2 = -0.1; // Lateral peak coefficient load dependency
+    f64 pEy1 = -1.0; // Lateral curvature base
+    f64 pEy2 = -0.5; // Lateral curvature load dependency
     f64 pKy1 = 10.0; 
     f64 pKy2 = 1.5;
     f64 pHy1 = 0.003; 

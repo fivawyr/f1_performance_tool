@@ -54,3 +54,6 @@ tetris_main
 .clangd
 
 compile_commands.json
+
+PHYSICS_ROADMAP.md
+AERO_THERMAL_STRATEGY.md

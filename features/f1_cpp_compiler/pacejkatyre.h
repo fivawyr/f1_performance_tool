@@ -52,7 +52,7 @@ class PacejkaCalculation {
       const f64 Ky = c_.pKy1 * c_.Fz0 * atan(2.0 * atan(Fz / (c_.pKy2 * c_.Fz0)));
       const f64 By = Ky / (Cy * Dy + eps_); 
       const f64 Ey = c_.pEy1 + c_.pEy2 * dfz;
-      const f64 Shy = c_cpHy1 + c_.pHy2 * dfz; 
+      const f64 Shy = c_.pHy1 + c_.pHy2 * dfz; 
       const f64 Svy = (c_.pVy1 + c_.pVy2 * dfz) * Fz;
 
       const f64 alpha_y = alpha + Shy;
@@ -63,6 +63,7 @@ class PacejkaCalculation {
       const f64 dfz = normLoadData(Fz);
       const f64 Cx = c_.pCx1;
       const f64 mu_x = (c_.pDx1 + c_.pDx2 * dfz);
+      const f64 Dx = mu_x * Fz;
       const f64 Kx = Fz * (c_.pKx1 + c_.pKx2 * dfz);
       const f64 Bx = Kx / (Cx * Dx + eps_);
       const f64 Ex = c_.pEx1 + c_.pEx2 * dfz;
@@ -89,7 +90,17 @@ class PacejkaCalculation {
     }
 
     Tyreforces calcCombined(f64 alpha, f64 kappa, f64 Fz, f64 gamma = 0.0) {
-      //TODO: Implement this func (Fx/Fy weighting)
+      const f64 Fx0 = calcFx(kappa, Fz);
+      const f64 Fy0 = calcFy(alpha, Fz, gamma);
+
+      const f64 mu_x = abs(Fx0) /  (Fz + eps_);
+      const f64 mu_y = abs(Fy0) / (Fz + eps_); 
+      const f64 denom = sqrt((mu_x * mu_x) + (mu_y * mu_y)) + eps_; 
+      Tyreforces f; 
+      f.Fx = Fx0 * (mu_x / denom);
+      f.Fy = Fy0 * (mu_y / denom); 
+      f.Am = calcAm(alpha, Fz, f.Fy);
+      return f; 
     }
 
   private:
@@ -105,3 +116,4 @@ class PacejkaCalculation {
       return sin(C * atan(Bx - E * (Bx - atan(Bx))));
     }
 };
+// TODO: include pacejka 

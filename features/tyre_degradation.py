@@ -9,22 +9,35 @@ from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import Ridge
 from sklearn.pipeline import Pipeline
 from core.data_processing import preprocess_stint
+from features.pacejka_calculator import (
+    PacejkaCalculator,
+    PacejkaTyreDegradation,
+    PacejkaCoefficients,
+    TyreForces
+)
 
 """
-For getting the results of my analysis and the interpretion for R² values, check ANALYSIS_NOTES.md
-@author fivawyr
+Tire Degradation Analysis - Multi-Model Approach
 
-Phase 3 (Future): Physics-Based Hybrid Model
-  - Derive tire grip loss from Pacejka formula
-  - Link lap time to grip degradation
-  - Expected R²: 0.7-0.9 consistently
+Phase 1: Statistical Regression Models (Legacy)
+  - Linear, Quadratic, Exponential models
+  - Best for qualifying data (short stints)
+  - R² typically 0.09-0.44
 
-Phase 4 (Advanced): Full Pacejka Integration
-  - C++ implementation with real tire coefficients
-  - Multi-variate input (age, temp, load, slip)
+Phase 2: Physics-Based Pacejka Magic Formula (Current)
+  - Derives tire grip loss from Pacejka formula
+  - Links grip reduction to lap time degradation
+  - Expected R²: 0.6-0.8 for race data
+  - C++ implementation available for high-speed calculations
+
+Phase 3: Full Multi-Variate Model (Future)
+  - Temperature, pressure, load dependencies
+  - Combined longitudinal + lateral slip
   - Expected R²: 0.85+
 
-ref.: https://en.wikipedia.org/wiki/Hans_Pacejka
+Reference: 
+  - Pacejka, H.B. "Tire and Vehicle Dynamics" (2012), Appendix 3
+  - https://en.wikipedia.org/wiki/Hans_Pacejka
 """
 @dataclass
 class vehicle_parameters:
@@ -68,9 +81,12 @@ class TireDegradationResult:
     degradation_rate_ms_per_lap: float
     r_squared: float
     estimated_tyre_life_laps: int
-    model_type: str = "linear"  # "linear", "quadratic", "exponential"
+    model_type: str = "linear"  # "linear", "quadratic", "exponential", "pacejka"
     r_squared_quadratic: Optional[float] = None
     r_squared_exponential: Optional[float] = None
+    r_squared_pacejka: Optional[float] = None
+    pacejka_grip_loss: Optional[float] = None  # Percentage grip loss per lap
+    pacejka_time_penalty: Optional[float] = None  # Seconds time penalty
 
     def to_dict(self) -> dict:
         return {
@@ -84,7 +100,10 @@ class TireDegradationResult:
             "model_type": self.model_type,
             "r_squared_quadratic": self.r_squared_quadratic,
             "r_squared_exponential": self.r_squared_exponential,
+            "r_squared_pacejka": self.r_squared_pacejka,
             "estimated_tyre_life_laps": self.estimated_tyre_life_laps,
+            "pacejka_grip_loss": self.pacejka_grip_loss,
+            "pacejka_time_penalty": self.pacejka_time_penalty,
         }
 
 
@@ -92,6 +111,8 @@ class TireDegradationAnalyzer:
     def __init__(self, vehicle_params: Optional[vehicle_parameters] = None):
         self.vehicle_params = vehicle_params or vehicle_parameters()
         self.results: List[TireDegradationResult] = []
+        self.pacejka_calc = PacejkaCalculator()
+        self.pacejka_deg = PacejkaTyreDegradation()
 
     @staticmethod
     def _exponential_model(x: np.ndarray, a: float, b: float) -> np.ndarray: # ndarray since we getting only floats and getting high speed 
@@ -139,6 +160,44 @@ class TireDegradationAnalyzer:
         except:
             return 0, 0, 0
 
+    def _fit_pacejka(
+        self, 
+        lap_nums: np.ndarray, 
+        times_ms: np.ndarray,
+        laps: List
+    ) -> Tuple[float, float, float, float, float]:
+        """
+        Fit tire degradation using Pacejka Magic Formula.
+        
+        Returns:
+            (baseline_time, penalty_per_lap, r_squared, avg_grip_loss, predicted_penalty)
+        """
+        try:
+            # Extract tire ages from laps
+            tyre_ages = np.array([lap.tyre_age for lap in laps])
+            
+            # Calculate expected time penalty from grip loss at each lap
+            penalties = np.array([
+                self.pacejka_deg.estimate_laptime_penalty(
+                    age, max_life_laps=40
+                ) for age in tyre_ages
+            ])
+            
+            # Fit penalty model: time_delta = baseline + penalty(age)
+            result = stats.linregress(penalties, times_ms)
+            r_squared = result.rvalue ** 2
+            
+            # Calculate average grip loss per lap
+            mean_age = np.mean(tyre_ages)
+            avg_grip_loss = (tyre_ages.max() - tyre_ages.min()) / len(tyre_ages)
+            
+            baseline = result.intercept
+            penalty_per_lap = result.slope
+            
+            return baseline, penalty_per_lap, r_squared, avg_grip_loss, np.mean(penalties)
+        except Exception as e:
+            return 0, 0, 0, 0, 0
+
     def analyze_stint(self,laps: List,driver: str, compound: str, stint: int, ) -> Optional[TireDegradationResult]:
         # Minimum stint length: 3 laps for meaningful analysis, with 2 laps, quadratic polynomial always overfits with R²=1.0!!
         if not laps or len(laps) < 3:
@@ -151,20 +210,23 @@ class TireDegradationAnalyzer:
     
         lap_nums = np.arange(1, len(times_ms) + 1)
 
+        # Fit all models
         intercept_lin, slope_lin, r2_lin = self._fit_linear(lap_nums, times_ms)
         intercept_quad, slope_quad, r2_quad = self._fit_quadratic(lap_nums, times_ms)
         intercept_exp, slope_exp, r2_exp = self._fit_exponential(lap_nums, times_ms)
+        intercept_pac, slope_pac, r2_pac, grip_loss_pac, penalty_pac = self._fit_pacejka(lap_nums, times_ms, laps)
 
         # Select best model based on R²
         models = {
-            "linear": (r2_lin, "linear", intercept_lin, slope_lin),
-            "quadratic": (r2_quad, "quadratic", intercept_quad, slope_quad),
-            "exponential": (r2_exp, "exponential", intercept_exp, slope_exp),
+            "linear": (r2_lin, "linear", intercept_lin, slope_lin, None, None),
+            "quadratic": (r2_quad, "quadratic", intercept_quad, slope_quad, None, None),
+            "exponential": (r2_exp, "exponential", intercept_exp, slope_exp, None, None),
+            "pacejka": (r2_pac, "pacejka", intercept_pac, slope_pac, grip_loss_pac, penalty_pac),
         }
 
         best_model = max(models.items(), key=lambda x: x[1][0])
         model_name = best_model[0]
-        r_squared, model_type, baseline_time, degradation_rate = best_model[1]
+        r_squared, model_type, baseline_time, degradation_rate, grip_loss, time_penalty = best_model[1]
 
         laps_until_limit = 999
         if degradation_rate > 0:
@@ -180,7 +242,10 @@ class TireDegradationAnalyzer:
             model_type=model_type,
             r_squared_quadratic=r2_quad,
             r_squared_exponential=r2_exp,
+            r_squared_pacejka=r2_pac,
             estimated_tyre_life_laps=laps_until_limit,
+            pacejka_grip_loss=grip_loss,
+            pacejka_time_penalty=time_penalty,
         )
 
         self.results.append(result)
