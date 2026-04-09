@@ -33,10 +33,10 @@ source .venv/bin/activate
  
 ### Run Tests & Analysis
 ```bash
-# Test Pacejka Magic Formula (NEW ✓)
+# Test Pacejka Magic Formula 
 uv run python test_pacejka.py
 
-# Test tire degradation with FastF1 data
+# Test tire degradation 
 uv run python test_tyre_degradation.py
 
 # Test core analysis functions
@@ -98,7 +98,7 @@ is acceptable.
  
 ---
  
-### 3. Tyre Degradation & Pacejka Magic Formula 5.2 ✓ (Phase 2 Complete)
+### 3. Tyre Degradation & Pacejka Magic Formula
 
 The Pacejka Magic Formula models tyre grip as a function of slip angle, slip ratio, and vertical load:
 
@@ -127,43 +127,6 @@ Where:
 4. **Degradation modeling**: Tyre age → coefficient changes → grip loss → lap time penalty
 5. **Multi-series**: Same physics for F1, LMDh, GT3
 
-#### Implementation
-
-```python
-from features.pacejka_calculator import (
-    PacejkaCalculator,
-    PacejkaTyreDegradation,
-)
-
-# Calculate forces at a specific slip state
-calc = PacejkaCalculator()
-forces = calc.calc_combined_forces(
-    alpha=0.39,   # slip angle [rad] 
-    kappa=0.05,   # slip ratio [-]
-    Fz=5000,      # normal load [N]
-)
-# forces.Fy = 2200 N (lateral)
-# forces.Fx = 1500 N (longitudinal)
-# forces.Mz = -120000 N⋅m (self-aligning)
-
-# Model degradation over stint
-deg = PacejkaTyreDegradation()
-for lap_age in range(0, 41, 10):
-    penalty = deg.estimate_laptime_penalty(lap_age)
-    print(f"Lap {lap_age}: +{penalty:.3f}s penalty")
-```
-
-#### Test Results ✓
-
-```
-✓ Force calculations: 1448 N lateral at 2° slip angle (realistic)
-✓ Load dependency: 1.53x scaling at 2x load
-✓ Combined forces: Proper friction ellipse implementation
-✓ Degradation: 0.48s loss over 40-lap stint
-✓ Coefficient ranges: All values within physics-valid bounds
-```
-
-See `test_pacejka.py` for full validation suite.
 
 ---
 
@@ -215,30 +178,6 @@ See **`PHYSICS_ROADMAP.md`** for detailed physics development plan:
 - Roll angle → camber effects
 - Setup optimization
 - Expected improvement: R² → 0.9-0.95
-
----
-
-## Architecture: Multi-Series Ready
-
-```
-core/physics/ (F1 + LMDh + GT3)
-├── pacejka_calculator.py  ✓ (Phase 2)
-├── aero_calculator.py      (Phase 3)
-├── powertrain_model.py     (Phase 4)
-├── brake_model.py          (Phase 5)
-└── suspension_model.py     (Phase 6)
-
-features/
-├── tyre_temperature.py    ✓ (Phase 1)
-├── tyre_degradation.py    ✓ (Phase 2 - Pacejka integrated)
-└── telemetry_analysis.py
-
-ui/
-└── aero_mapping_tool.py   (Planned)
-```
-
-~70% of physics core will be reusable for F1 → LMDh → GT3 transition.
- 
 ---
  
 ## References
