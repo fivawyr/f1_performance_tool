@@ -153,6 +153,17 @@ elif result.model_type == "quadratic":
 
 ---
 
+## Aerodynamic 
+ 
+- if you are interested in learning about Reynold Numbers and the sources that I used, feel free to use my references
+- 
+
+#### Aerodynamic References
+- NACA 2412, RE=1mio.: [Aerfoilstools](http://airfoiltools.com/polar/details?polar=xf-naca2412-il-1000000)
+- NASA Reynoldsexplaination: [NASA Glenn Research Center](https://www.grc.nasa.gov/www/k-12/airplane/reynolds.html)
+- Lift, Drag & Downforce: [Lift Wikipedia](https://en.wikipedia.org/wiki/Lift_(force)) - [Drag Wikipedia](https://en.wikipedia.org/wiki/Drag_(physics)) - [Downforce Wikipedia](https://en.wikipedia.org/wiki/Downforce)
+---
+
 ## Future Roadmap (Phase 3-6)
 
 See **`PHYSICS_ROADMAP.md`** for detailed physics development plan:
