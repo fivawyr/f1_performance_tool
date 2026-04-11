@@ -19,3 +19,6 @@ dependencies = [
     "simple-term-menu>=1.6.6",
     "textual>=8.0.0",
 ]
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]

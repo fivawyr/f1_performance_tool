@@ -10,7 +10,10 @@ from core.models import SessionData
 from features.tyre_degradation import analyse_all, TireDegradationResult
 import json
 from datetime import datetime
-
+"""
+This file is for converting our results in a the ./analysis_results folder (as a json/markdown)
+Json is for passing it as easy input for other c++ functions (maybe gets deleted later on)
+"""
 sys.path.insert(0, str(Path(__file__).parent))
 
 console = Console()
@@ -92,7 +95,6 @@ def print_detailed_results(results: Dict[Tuple[str, str, int], TireDegradationRe
     table.add_column("Model", style="green", width=10)
     
     for (driver, compound, stint), result in sorted_results:
-        # Color code R² values
         if result.r_squared > 0.6:
             r2_style = "green"
         elif result.r_squared > 0.3:
@@ -153,9 +155,8 @@ def save_results_to_file(
     with open(json_file, "w") as f:
         json.dump(json_data, f, indent=2)
     
-    console.print(f"\n[green]✓[/green] Results saved to: {json_file}")
+    console.print(f"\n[green] json convertion was successful[/green] Results saved to: {json_file}")
     
-    # Save to markdown for easy reading
     md_file = output_path / f"race_analysis_{race_label}_{timestamp}.md"
     with open(md_file, "w") as f:
         f.write(f"# Race Analysis: {race_label}\n\n")
@@ -185,7 +186,7 @@ def save_results_to_file(
         for (driver, compound, stint), result in sorted_results:
             f.write(f"| {driver} | {compound} | {stint} | {result.num_laps} | {result.baseline_time_ms:.0f} | {result.degradation_rate_ms_per_lap:.2f} | {result.r_squared:.3f} | {result.model_type} |\n")
     
-    console.print(f"[green]✓[/green] Markdown report saved to: {md_file}")
+    console.print(f"[green] convertion for markdownfile was successful[/green] Markdown report saved to: {md_file}")
     
     return str(json_file)
 
