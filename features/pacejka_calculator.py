@@ -13,7 +13,6 @@ import math
 
 @dataclass
 class PacejkaCoefficients:
-    # Literal (y) direction
     pCy1: float = 1.3
     pDy1: float = 1.0
     pDy2: float = -0.1
@@ -26,7 +25,6 @@ class PacejkaCoefficients:
     pVy1: float = 0.04 
     pVy2: float = -0.04
     
-    # Longitudinal (x) direction
     pCx1: float = 1.65
     pDx1: float = 1.1
     pDx2: float = -0.1
@@ -40,7 +38,6 @@ class PacejkaCoefficients:
     pVx1: float = 0.0
     pVx2: float = 0.0
     
-    # Aligning moment (z) direction
     qBz1: float = 9.0
     qBz2: float = -1.5
     qCz1: float = 1.1
@@ -49,21 +46,16 @@ class PacejkaCoefficients:
     qEz1: float = -1.0
     qHz1: float = 0.005
     
-    # Reference normal load
-    Fz0: float = 4000.0     # Nominal load [N]
-
+    Fz0: float = 4000.0     
 
 @dataclass
 class TyreForces:
-    """Output: Tyre forces and moments"""
-    Fy: float = 0.0         # Lateral force [N]
-    Fx: float = 0.0         # Longitudinal force [N]
-    Mz: float = 0.0         # Aligning moment [N⋅m]
+    Fy: float = 0.0
+    Fx: float = 0.0
+    Mz: float = 0.0
 
 
 class PacejkaCalculator:
-    """Pacejka Magic Formula 5.2 Tyre Force Calculator"""
-    
     EPS = 1e-9
     
     def __init__(self, coefficients: Optional[PacejkaCoefficients] = None):
@@ -92,18 +84,15 @@ class PacejkaCalculator:
         mu_y = self.coeffs.pDy1 + self.coeffs.pDy2 * dfz
         Dy = mu_y * Fz
         
-        # Lateral stiffness
         Ky = (self.coeffs.pKy1 * self.coeffs.Fz0 * 
               math.atan(2.0 * math.atan(Fz / (self.coeffs.pKy2 * self.coeffs.Fz0))))
         
         By = Ky / (Cy * Dy + self.EPS)
         Ey = self.coeffs.pEy1 + self.coeffs.pEy2 * dfz
         
-        # Horizontal shift (camber effect)
         Shy = self.coeffs.pHy1 + self.coeffs.pHy2 * dfz
         alpha_y = alpha + Shy
         
-        # Vertical shift (load effect)
         Svy = (self.coeffs.pVy1 + self.coeffs.pVy2 * dfz) * Fz
         
         return Dy * self._magic_formula(By, Cy, Ey, alpha_y) + Svy
@@ -120,16 +109,13 @@ class PacejkaCalculator:
         mu_x = self.coeffs.pDx1 + self.coeffs.pDx2 * dfz
         Dx = mu_x * Fz
         
-        # Longitudinal stiffness
         Kx = Fz * (self.coeffs.pKx1 + self.coeffs.pKx2 * dfz)
         Bx = Kx / (Cx * Dx + self.EPS)
         Ex = self.coeffs.pEx1 + self.coeffs.pEx2 * dfz
         
-        # Horizontal shift (inflation pressure effect)
         Shx = self.coeffs.pHx1 + self.coeffs.pHx2 * dfz
         kappa_x = kappa + Shx
         
-        # Vertical shift (load effect)
         Svx = (self.coeffs.pVx1 + self.coeffs.pVx2 * dfz) * Fz
         
         return Dx * self._magic_formula(Bx, Cx, Ex, kappa_x) + Svx
@@ -166,16 +152,13 @@ class PacejkaCalculator:
         Fy0 = self.calc_lateral_force(alpha, Fz, gamma)
         Fx0 = self.calc_longitudinal_force(kappa, Fz)
         
-        # Friction ellipse scaling (combined slip reduces available grip)
         mu_x = abs(Fx0) / (Fz + self.EPS)
         mu_y = abs(Fy0) / (Fz + self.EPS)
         denom = math.sqrt(mu_x**2 + mu_y**2) + self.EPS
         
-        # Scale forces to stay within friction limit
         Fx = Fx0 * (mu_x / denom)
         Fy = Fy0 * (mu_y / denom)
         
-        # Aligning moment from scaled lateral force
         Mz = self.calc_aligning_moment(alpha, Fz, Fy)
         
         return TyreForces(Fy=Fy, Fx=Fx, Mz=Mz)
@@ -213,14 +196,11 @@ class PacejkaTyreDegradation:
         b_increase_factor = 1.0 + 0.15 * age_factor
         
         degraded = PacejkaCoefficients(
-            # Scale D coefficients (peak force)
             pDy1=self.initial_coeffs.pDy1 * d_loss_factor,
             pDx1=self.initial_coeffs.pDx1 * d_loss_factor,
             qDz1=self.initial_coeffs.qDz1 * d_loss_factor,
-            # Scale B coefficients (stiffness)
             pKy1=self.initial_coeffs.pKy1 / b_increase_factor,
             pKx1=self.initial_coeffs.pKx1 / b_increase_factor,
-            # Copy all other coefficients
             pCy1=self.initial_coeffs.pCy1,
             pDy2=self.initial_coeffs.pDy2,
             pEy1=self.initial_coeffs.pEy1,
@@ -257,20 +237,17 @@ class PacejkaTyreDegradation:
         reference_grip: float = 1.0
     ) -> float:
 
-        # Simple linear grip loss model
         age_factor = tyre_age_laps / max_life_laps
-        grip_loss = 0.4 * age_factor  # Up to 40% grip loss at end of life
+        grip_loss = 0.4 * age_factor
         grip_ratio = 1.0 - grip_loss
         
-        # Empirical correlation: 1% grip loss ≈ 0.02s lap time (circuit dependent)
-        penalty = (1.0 - grip_ratio) * 0.02 * 60  # Convert to seconds
+        penalty = (1.0 - grip_ratio) * 0.02 * 60  
         return penalty
 
 
 if __name__ == "__main__":
     calc = PacejkaCalculator()
     
-    # Typical F1 corner: 1.5° slip angle, 4000N load
     alpha = math.radians(1.5)
     Fz = 4000.0
     kappa = 0.0
@@ -280,7 +257,6 @@ if __name__ == "__main__":
     print(f"Longitudinal force (Fx): {forces.Fx:.1f} N")
     print(f"Aligning moment (Mz): {forces.Mz:.1f} N⋅m")
     
-    # Degradation example
     deg = PacejkaTyreDegradation()
     for age in [0, 10, 20, 30, 40]:
         penalty = deg.estimate_laptime_penalty(age, max_life_laps=40)

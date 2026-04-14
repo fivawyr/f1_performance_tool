@@ -14,30 +14,7 @@ struct Tyreforces {
  * and changing the values, that I got from the lecture. We passing D - max force, C - curve shape, B - stiffness, E - curvature factor (how sharp is the curve?),
  * Sh/Sv Horizontal shifts (how is the horizontal changes of the car - due to camber effects or tyre asymmetry -> Shy horizontal / svy vertical). 
  * Those coefficients are passed in the magic formula 
- */
-
-/*
- * Pacejka Magic Formula 5.2 — Coefficient Reference
- *
- * INPUTS:
- *   alpha  [rad]    Slip angle
- *   kappa  [-]      Longitudinal slip (0=rolling, ±1=locked/spinning)
- *   Fz     [N]      Normal load
- *   gamma  [rad]    Camber angle
- *
- * BCDE CORE:
- *   B  Stiffness    scales the initial slope of the curve
- *   C  Shape        determines curve shape (sine-like vs. saturated)
- *   D  Peak         maximum force value [N]
- *   E  Curvature    curvature around the peak
- *   Sh              Horizontal shift [rad]
- *   Sv              Vertical shift [N]
- *
- * COEFFICIENT NAMING: p<quantity><direction><index>
- *   Quantity:   C=shape, D=peak, K=stiffness, E=curvature, H=h.shift, V=v.shift
- *   Direction:  x=longitudinal, y=lateral
- *   Index:      1=base value, 2=load dependency (×dfz)
- *
+ * 
  * Source: Pacejka, "Tyre and Vehicle Dynamics", 3rd ed. (2012), Appendix 3
  */
 class PacejkaCalculation {
@@ -116,4 +93,3 @@ class PacejkaCalculation {
       return sin(C * atan(Bx - E * (Bx - atan(Bx))));
     }
 };
-// TODO: include pacejka 
